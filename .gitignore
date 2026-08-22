@@ -1,0 +1,11 @@
+# Compiled output — never commit the bytecode
+out/
+
+# macOS
+.DS_Store
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.class

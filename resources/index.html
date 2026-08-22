@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AP Exception Queue — Problem 9</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────
+   DESIGN TOKENS
+───────────────────────────────────────────── */
+:root {
+  /* Palette */
+  --bg:          #0f1117;
+  --surface:     #191c25;
+  --surface-2:   #1e2130;
+  --surface-3:   #252840;
+  --border:      #2a2e42;
+  --border-soft: #222536;
+
+  /* Text */
+  --text-1: #e8eaf0;
+  --text-2: #9499b0;
+  --text-3: #5c6180;
+
+  /* Accent */
+  --blue:        #4f73ff;
+  --blue-dim:    rgba(79,115,255,.12);
+
+  /* Tier colors */
+  --green:       #34c77b;
+  --green-bg:    rgba(52,199,123,.10);
+  --amber:       #f5a623;
+  --amber-bg:    rgba(245,166,35,.10);
+  --red:         #f0506e;
+  --red-bg:      rgba(240,80,110,.10);
+
+  /* Neutral */
+  --white:       #ffffff;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Inter', sans-serif;
+
+  /* Layout */
+  --sidebar-w:   240px;
+  --topbar-h:    60px;
+  --radius:      10px;
+  --radius-sm:   6px;
+}
+
+/* ─────────────────────────────────────────────
+   RESET & BASE
+───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text-1);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+}
+
+button { cursor: pointer; font-family: var(--sans); border: none; background: none; }
+input  { font-family: var(--sans); }
+a      { text-decoration: none; }
+
+::-webkit-scrollbar            { width: 6px; }
+::-webkit-scrollbar-track      { background: var(--surface); }
+::-webkit-scrollbar-thumb      { background: var(--border); border-radius: 99px; }
+
+/* ─────────────────────────────────────────────
+   SIDEBAR
+───────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+
+.sidebar-logo {
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-icon {
+  width: 30px; height: 30px;
+  background: var(--blue);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.logo-text { font-size: 14px; font-weight: 700; color: var(--text-1); line-height: 1.2; }
+.logo-sub  { font-size: 10px; font-family: var(--mono); color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; }
+
+.sidebar-section-label {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 20px 20px 6px;
+}
+
+.sidebar-nav { list-style: none; padding: 0 10px; }
+.sidebar-nav li { margin-bottom: 2px; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  transition: background .15s, color .15s;
+  width: 100%;
+  text-align: left;
+}
+.nav-item:hover          { background: var(--surface-2); color: var(--text-1); }
+.nav-item.active         { background: var(--blue-dim); color: var(--blue); }
+.nav-item .nav-icon      { font-size: 15px; width: 18px; text-align: center; }
+.nav-item .nav-badge {
+  margin-left: auto;
+  font-size: 10px; font-family: var(--mono);
+  background: var(--red-bg); color: var(--red);
+  padding: 1px 6px; border-radius: 99px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-3);
+  line-height: 1.6;
+}
+.sidebar-footer strong { color: var(--text-2); }
+
+/* ─────────────────────────────────────────────
+   MAIN LAYOUT
+───────────────────────────────────────────── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ─────────────────────────────────────────────
+   TOPBAR
+───────────────────────────────────────────── */
+.topbar {
+  height: var(--topbar-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  gap: 14px;
+  position: sticky; top: 0; z-index: 50;
+}
+
+.topbar-title { font-size: 15px; font-weight: 600; flex: 1; }
+
+.search-wrap {
+  position: relative;
+  flex: 0 0 260px;
+}
+.search-icon {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--text-3); font-size: 14px; pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-size: 13px;
+  padding: 7px 12px 7px 32px;
+  outline: none;
+  transition: border-color .2s;
+}
+.search-input::placeholder { color: var(--text-3); }
+.search-input:focus        { border-color: var(--blue); }
+
+.topbar-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.filter-select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+}
+.filter-select:focus { border-color: var(--blue); }
+
+.topbar-btn {
+  background: var(--blue);
+  color: var(--white);
+  border-radius: var(--radius-sm);
+  font-size: 12px; font-weight: 600;
+  padding: 7px 14px;
+  transition: opacity .15s;
+}
+.topbar-btn:hover { opacity: .85; }
+
+/* ─────────────────────────────────────────────
+   PAGE CONTENT
+───────────────────────────────────────────── */
+.content { padding: 28px; flex: 1; }
+
+/* ─────────────────────────────────────────────
+   STAT CARDS
+───────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stat-icon {
+  width: 42px; height: 42px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.stat-icon.blue   { background: var(--blue-dim);  color: var(--blue);  }
+.stat-icon.green  { background: var(--green-bg);   color: var(--green); }
+.stat-icon.amber  { background: var(--amber-bg);   color: var(--amber); }
+.stat-icon.red    { background: var(--red-bg);     color: var(--red);   }
+
+.stat-body {}
+.stat-value { font-size: 26px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+.stat-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
+
+/* ─────────────────────────────────────────────
+   TWO-COLUMN ROW: CHART + QUEUE
+───────────────────────────────────────────── */
+.row-2col {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+/* ─────────────────────────────────────────────
+   CHART PANEL
+───────────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.panel-title { font-size: 13px; font-weight: 600; }
+.panel-meta  { font-size: 11px; font-family: var(--mono); color: var(--text-3); }
+
+.chart-body { padding: 20px; }
+
+/* Donut chart via CSS conic-gradient */
+.donut-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+}
+.donut {
+  width: 130px; height: 130px;
+  border-radius: 50%;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.donut-center {
+  position: absolute;
+  text-align: center;
+}
+.donut-center .dc-num  { font-size: 24px; font-weight: 700; font-family: var(--mono); }
+.donut-center .dc-lbl  { font-size: 10px; color: var(--text-3); text-transform: uppercase; }
+
+.donut-legend { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.legend-row {
+  display: flex; align-items: center; gap: 8px; font-size: 12px;
+}
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-name { flex: 1; color: var(--text-2); }
+.legend-val  { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+
+/* ─────────────────────────────────────────────
+   QUEUE PANEL
+───────────────────────────────────────────── */
+.queue-panel { display: flex; flex-direction: column; }
+
+.queue-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
+
+.tab-group { display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius-sm); padding: 3px; }
+.tab {
+  font-size: 11px; font-weight: 600; padding: 5px 12px;
+  border-radius: 5px; color: var(--text-3); transition: all .15s;
+}
+.tab:hover  { color: var(--text-1); }
+.tab.active { background: var(--surface-3); color: var(--text-1); }
+
+.spacer { flex: 1; }
+
+.sort-label { font-size: 11px; color: var(--text-3); }
+
+/* ─────────────────────────────────────────────
+   TRANSACTION CARD
+───────────────────────────────────────────── */
+.tx-list { overflow-y: auto; max-height: 460px; }
+
+.tx-card {
+  border-bottom: 1px solid var(--border-soft);
+  transition: background .15s;
+}
+.tx-card:last-child { border-bottom: none; }
+.tx-card.expanded  { background: var(--surface-2); }
+
+.tx-summary {
+  display: grid;
+  grid-template-columns: 80px 1fr 110px 90px 110px 130px;
+  gap: 10px;
+  align-items: center;
+  padding: 13px 18px;
+  cursor: pointer;
+  font-size: 13px;
+  user-select: none;
+}
+.tx-summary:hover { background: var(--surface-2); }
+
+.tx-id   { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--text-2); }
+.tx-name { font-size: 13px; font-weight: 500; }
+.tx-name small { display: block; font-size: 11px; color: var(--text-3); font-weight: 400; margin-top: 1px; }
+.tx-amt  { font-family: var(--mono); font-size: 13px; font-weight: 600; text-align: right; }
+
+/* Tier pill */
+.tier-badge {
+  font-size: 10px; font-weight: 700; font-family: var(--mono);
+  text-transform: uppercase; letter-spacing: .04em;
+  padding: 3px 9px; border-radius: 99px;
+  text-align: center; white-space: nowrap;
+  display: inline-block;
+}
+.tb-auto   { background: var(--green-bg); color: var(--green); }
+.tb-human  { background: var(--amber-bg); color: var(--amber); }
+.tb-manual { background: var(--red-bg);   color: var(--red);   }
+
+/* Confidence bar */
+.conf-wrap { display: flex; align-items: center; gap: 7px; }
+.conf-bar-track {
+  flex: 1; height: 5px; background: var(--surface-3); border-radius: 99px; overflow: hidden;
+}
+.conf-bar-fill  { height: 100%; border-radius: 99px; transition: width .4s ease; }
+.conf-pct { font-family: var(--mono); font-size: 11px; font-weight: 600; width: 32px; text-align: right; }
+
+/* Status chip */
+.status-chip {
+  font-size: 10px; font-weight: 600; font-family: var(--mono);
+  padding: 3px 8px; border-radius: 4px; text-align: center;
+  display: inline-block; white-space: nowrap;
+}
+.sc-open     { background: var(--surface-3); color: var(--text-2); }
+.sc-resolved { background: var(--green-bg);  color: var(--green);  }
+.sc-manual   { background: var(--red-bg);    color: var(--red);    }
+.sc-approved { background: var(--blue-dim);  color: var(--blue);   }
+
+/* ─────────────────────────────────────────────
+   EXPANDED CARD BODY
+───────────────────────────────────────────── */
+.tx-body {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-top: 1px solid var(--border-soft);
+}
+.tx-card.expanded .tx-body { display: grid; }
+
+.tx-col {
+  padding: 18px 20px;
+}
+.tx-col:first-child { border-right: 1px solid var(--border-soft); }
+
+.tx-col-label {
+  font-size: 10px; font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.tx-col-label span { font-size: 13px; }
+
+/* Rule reasons */
+.rule-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.rule-tag {
+  font-size: 10px; font-family: var(--mono); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em;
+  padding: 3px 8px; border-radius: 4px;
+  background: var(--red-bg); color: var(--red);
+}
+
+.reason-text { font-size: 12px; color: var(--text-2); line-height: 1.6; margin-bottom: 14px; }
+
+/* Details mini table */
+.detail-rows {}
+.detail-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  font-size: 12px; padding: 6px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-key   { color: var(--text-3); }
+.detail-val   { font-family: var(--mono); color: var(--text-1); text-align: right; }
+.detail-val.mismatch { color: var(--red); }
+
+/* AI box */
+.ai-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 13px 14px;
+  margin-bottom: 14px;
+}
+.ai-card .ai-source {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-family: var(--mono); color: var(--text-3);
+  margin-bottom: 8px;
+}
+.ai-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+.ai-text { font-size: 12px; color: var(--text-2); line-height: 1.6; }
+.ai-resolution {
+  margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border-soft);
+  font-size: 12px; color: var(--text-1); line-height: 1.6;
+}
+.ai-resolution strong { color: var(--text-2); font-weight: 500; }
+
+.ai-placeholder {
+  text-align: center; padding: 14px;
+  background: var(--bg); border: 1px dashed var(--border);
+  border-radius: var(--radius-sm); margin-bottom: 14px;
+}
+.ai-placeholder p { font-size: 12px; color: var(--text-3); margin-bottom: 8px; }
+
+/* Action buttons */
+.action-row { display: flex; gap: 7px; flex-wrap: wrap; }
+
+.btn {
+  font-size: 12px; font-weight: 600;
+  padding: 8px 14px; border-radius: var(--radius-sm);
+  transition: opacity .15s, transform .1s;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.btn:hover  { opacity: .85; }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+
+.btn-primary { background: var(--blue);  color: var(--white); }
+.btn-green   { background: var(--green); color: var(--bg);    font-weight: 700; }
+.btn-amber   { background: var(--amber); color: var(--bg);    font-weight: 700; }
+.btn-ghost   {
+  background: transparent; color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { color: var(--text-1); border-color: var(--text-3); }
+.btn-sm { font-size: 11px; padding: 5px 10px; }
+
+/* ─────────────────────────────────────────────
+   ALL-TRANSACTIONS TABLE
+───────────────────────────────────────────── */
+.table-section { margin-top: 24px; }
+
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+table.full {
+  width: 100%; border-collapse: collapse;
+}
+table.full thead th {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  text-align: left;
+}
+table.full tbody tr {
+  border-bottom: 1px solid var(--border-soft);
+  transition: background .12s;
+}
+table.full tbody tr:last-child { border-bottom: none; }
+table.full tbody tr:hover       { background: var(--surface-2); }
+table.full td {
+  padding: 10px 16px; font-size: 12px; color: var(--text-2);
+}
+table.full td.mono { font-family: var(--mono); color: var(--text-1); }
+table.full td.dim  { color: var(--text-3); }
+
+/* ─────────────────────────────────────────────
+   TOAST NOTIFICATIONS
+───────────────────────────────────────────── */
+.toast-container {
+  position: fixed; bottom: 24px; right: 24px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 9999;
+}
+
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--blue);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  min-width: 260px; max-width: 340px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  font-size: 13px;
+  animation: slideIn .25s ease;
+}
+.toast.toast-success { border-left-color: var(--green); }
+.toast.toast-error   { border-left-color: var(--red); }
+.toast.toast-warn    { border-left-color: var(--amber); }
+.toast-icon  { font-size: 16px; flex-shrink: 0; }
+.toast-msg   { flex: 1; color: var(--text-1); font-size: 12px; line-height: 1.4; }
+.toast-close { color: var(--text-3); font-size: 16px; cursor: pointer; transition: color .15s; }
+.toast-close:hover { color: var(--text-1); }
+
+@keyframes slideIn {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: scale(.95); }
+}
+
+/* ─────────────────────────────────────────────
+   LOADING SPINNER
+───────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.2);
+  border-top-color: var(--white);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─────────────────────────────────────────────
+   EMPTY STATE
+───────────────────────────────────────────── */
+.empty-state {
+  text-align: center; padding: 48px 20px;
+}
+.empty-state .es-icon { font-size: 36px; margin-bottom: 10px; opacity: .4; }
+.empty-state p        { font-size: 13px; color: var(--text-3); }
+
+/* ─────────────────────────────────────────────
+   SKELETON LOADER
+───────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ─────────────────────────────────────────────
+   PROGRESS BAR (top page loader)
+───────────────────────────────────────────── */
+.page-loader {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--blue);
+  z-index: 9999;
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform .3s ease;
+}
+.page-loader.loading { transform: scaleX(.7); }
+.page-loader.done    { transform: scaleX(1); transition: transform .2s ease; }
+.page-loader.hidden  { opacity: 0; transition: opacity .3s .2s; }
+</style>
+</head>
+
+<body>
+
+<!-- Page progress bar -->
+<div class="page-loader" id="pageLoader"></div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ─── SIDEBAR ─── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">AP Exception</div>
+      <div class="logo-sub">Queue · Prototype</div>
+    </div>
+  </div>
+
+  <div class="sidebar-section-label">Workspace</div>
+  <ul class="sidebar-nav">
+    <li>
+      <button class="nav-item active" onclick="showSection('queue')">
+        <span class="nav-icon">📋</span>
+        Exception Queue
+        <span class="nav-badge" id="sidebarBadge">—</span>
+      </button>
+    </li>
+    <li>
+      <button class="nav-item" onclick="showSection('all')">
+        <span class="nav-icon">📄</span>
+        All Transactions
+      </button>
+    </li>
+  </ul>
+
+  <div class="sidebar-section-label">Legend</div>
+  <ul class="sidebar-nav">
+    <li style="padding:0 4px">
+      <div style="display:flex;flex-direction:column;gap:6px;padding:8px 8px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-3)">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);"></span>Auto-Resolve ≥ 90%
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-3)">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--amber);"></span>Human Approval 70–89%
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-3)">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--red);"></span>Manual Review &lt; 70%
+        </div>
+      </div>
+    </li>
+  </ul>
+
+  <div class="sidebar-footer">
+    <strong>Prototype</strong> · Problem 9<br>
+    No real financial data.<br>
+    Confidence: rules only, not AI.
+  </div>
+</aside>
+
+<!-- ─── MAIN ─── -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-title">AP Transaction Exception Queue</div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" type="text" id="searchInput" placeholder="Search vendor, ID, invoice…">
+    </div>
+    <div class="topbar-filter">
+      Filter:
+      <select class="filter-select" id="tierFilter">
+        <option value="all">All tiers</option>
+        <option value="Auto-Resolve">Auto-Resolve</option>
+        <option value="Human Approval">Human Approval</option>
+        <option value="Manual Review">Manual Review</option>
+      </select>
+      <select class="filter-select" id="ruleFilter">
+        <option value="all">All rules</option>
+        <option value="duplicate_invoice">Duplicate Invoice</option>
+        <option value="amount_mismatch">Amount Mismatch</option>
+        <option value="tax_mismatch">Tax Mismatch</option>
+        <option value="missing_po">Missing PO</option>
+      </select>
+    </div>
+    <button class="topbar-btn" onclick="reloadData()">↻ Refresh</button>
+  </header>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- STAT CARDS -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-icon blue">📊</div><div class="stat-body"><div class="stat-value skeleton" style="width:40px;height:28px;">&nbsp;</div><div class="stat-label">Total Transactions</div></div></div>
+      <div class="stat-card"><div class="stat-icon red">⚠️</div><div class="stat-body"><div class="stat-value skeleton" style="width:40px;height:28px;">&nbsp;</div><div class="stat-label">Flagged Exceptions</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-body"><div class="stat-value skeleton" style="width:40px;height:28px;">&nbsp;</div><div class="stat-label">Auto-Resolve (≥90%)</div></div></div>
+      <div class="stat-card"><div class="stat-icon amber">👤</div><div class="stat-body"><div class="stat-value skeleton" style="width:40px;height:28px;">&nbsp;</div><div class="stat-label">Manual Review (&lt;70%)</div></div></div>
+    </div>
+
+    <!-- QUEUE SECTION -->
+    <div id="sectionQueue">
+      <div class="row-2col">
+
+        <!-- DONUT CHART PANEL -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Exception Breakdown</span>
+            <span class="panel-meta" id="chartMeta">—</span>
+          </div>
+          <div class="chart-body">
+            <div class="donut-wrap">
+              <div class="donut" id="donutChart">
+                <div class="donut-center">
+                  <div class="dc-num" id="donutNum">—</div>
+                  <div class="dc-lbl">Flagged</div>
+                </div>
+              </div>
+              <div class="donut-legend" id="donutLegend"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EXCEPTION QUEUE PANEL -->
+        <div class="panel queue-panel">
+          <div class="panel-header">
+            <span class="panel-title" id="queuePanelTitle">Flagged Queue</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <label style="font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:5px;cursor:pointer;">
+                <input type="checkbox" id="onlyOpen" checked style="accent-color:var(--blue)"> Open only
+              </label>
+            </div>
+          </div>
+
+          <div class="queue-toolbar">
+            <div class="tab-group">
+              <button class="tab active" data-tab="all"    onclick="setTab(this,'all')">All</button>
+              <button class="tab"        data-tab="auto"   onclick="setTab(this,'auto')">Auto-Resolve</button>
+              <button class="tab"        data-tab="human"  onclick="setTab(this,'human')">Human Approval</button>
+              <button class="tab"        data-tab="manual" onclick="setTab(this,'manual')">Manual Review</button>
+            </div>
+            <div class="spacer"></div>
+            <span class="sort-label">Sort: lowest confidence first</span>
+          </div>
+
+          <div class="tx-list" id="txList">
+            <div class="empty-state"><div class="es-icon"><div class="spinner"></div></div><p>Loading transactions…</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALL TRANSACTIONS SECTION -->
+    <div id="sectionAll" style="display:none">
+      <div class="table-section">
+        <div class="panel-header" style="padding:14px 0 12px;">
+          <span class="panel-title">All Transactions &amp; Current Status</span>
+          <span class="panel-meta" id="allTableMeta">—</span>
+        </div>
+        <div class="table-wrap">
+          <table class="full" id="allTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Vendor</th>
+                <th>Invoice #</th>
+                <th>Invoice Amt</th>
+                <th>PO Amt</th>
+                <th>Tax</th>
+                <th>Exception?</th>
+                <th>Rules Triggered</th>
+                <th>Confidence</th>
+                <th>Tier</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="allTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const state = {
+  transactions: [],
+  activeTab: 'all',
+  searchQuery: '',
+  tierFilter: 'all',
+  ruleFilter: 'all',
+  onlyOpen: true,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('searchInput').addEventListener('input', e => {
+  state.searchQuery = e.target.value.toLowerCase();
+  renderQueue();
+});
+document.getElementById('tierFilter').addEventListener('change', e => {
+  state.tierFilter = e.target.value;
+  renderQueue();
+});
+document.getElementById('ruleFilter').addEventListener('change', e => {
+  state.ruleFilter = e.target.value;
+  renderQueue();
+});
+document.getElementById('onlyOpen').addEventListener('change', e => {
+  state.onlyOpen = e.target.checked;
+  renderQueue();
+});
+
+loadData();
+
+// ═══════════════════════════════════════════════════════════════
+// DATA LOADING
+// ═══════════════════════════════════════════════════════════════
+async function loadData() {
+  startLoader();
+  try {
+    const res = await fetch('/api/transactions');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    state.transactions = await res.json();
+    render();
+    toast('Loaded ' + state.transactions.length + ' transactions', 'success');
+  } catch (e) {
+    toast('Failed to load transactions: ' + e.message, 'error');
+    document.getElementById('txList').innerHTML = `<div class="empty-state"><div class="es-icon">❌</div><p>Could not reach the server.<br>Is it running on port 8080?</p></div>`;
+  } finally {
+    doneLoader();
+  }
+}
+
+async function reloadData() {
+  state.transactions = [];
+  document.getElementById('txList').innerHTML = `<div class="empty-state"><div class="es-icon"><div class="spinner"></div></div><p>Refreshing…</p></div>`;
+  await loadData();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FULL RENDER
+// ═══════════════════════════════════════════════════════════════
+function render() {
+  renderStats();
+  renderDonut();
+  renderQueue();
+  renderAllTable();
+  updateSidebarBadge();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════════════
+function renderStats() {
+  const all  = state.transactions;
+  const exc  = all.filter(t => t.is_exception);
+  const auto = exc.filter(t => t.confidence >= 90);
+  const man  = exc.filter(t => t.confidence < 70);
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon blue">📊</div>
+      <div class="stat-body">
+        <div class="stat-value">${all.length}</div>
+        <div class="stat-label">Total Transactions</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red">⚠️</div>
+      <div class="stat-body">
+        <div class="stat-value">${exc.length}</div>
+        <div class="stat-label">Flagged Exceptions</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">✅</div>
+      <div class="stat-body">
+        <div class="stat-value">${auto.length}</div>
+        <div class="stat-label">Auto-Resolve (≥90%)</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon amber">👤</div>
+      <div class="stat-body">
+        <div class="stat-value">${man.length}</div>
+        <div class="stat-label">Manual Review (&lt;70%)</div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DONUT CHART
+// ═══════════════════════════════════════════════════════════════
+function renderDonut() {
+  const exc   = state.transactions.filter(t => t.is_exception);
+  const auto  = exc.filter(t => t.confidence >= 90).length;
+  const human = exc.filter(t => t.confidence >= 70 && t.confidence < 90).length;
+  const man   = exc.filter(t => t.confidence < 70).length;
+  const total = exc.length || 1;
+
+  const green  = getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+  const amber  = getComputedStyle(document.documentElement).getPropertyValue('--amber').trim();
+  const red    = getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+  const surf   = getComputedStyle(document.documentElement).getPropertyValue('--surface-3').trim();
+
+  const gPct = (auto / total) * 100;
+  const aPct = (human / total) * 100;
+  const rPct = (man / total) * 100;
+
+  const stops = exc.length === 0
+    ? `${surf} 0deg 360deg`
+    : `${green} 0deg ${gPct * 3.6}deg,
+       ${amber} ${gPct * 3.6}deg ${(gPct + aPct) * 3.6}deg,
+       ${red}   ${(gPct + aPct) * 3.6}deg 360deg`;
+
+  document.getElementById('donutChart').style.background =
+    `conic-gradient(${stops})`;
+
+  // Inner hole
+  document.getElementById('donutChart').style.cssText += `
+    mask: radial-gradient(circle at center, transparent 42px, black 43px);
+    -webkit-mask: radial-gradient(circle at center, transparent 42px, black 43px);
+  `;
+
+  document.getElementById('donutNum').textContent = exc.length;
+  document.getElementById('chartMeta').textContent = total - (exc.length === 0 ? total : 0) + ' rules active';
+  document.getElementById('chartMeta').textContent = exc.length + ' / ' + state.transactions.length + ' flagged';
+
+  document.getElementById('donutLegend').innerHTML = `
+    <div class="legend-row">
+      <span class="legend-dot" style="background:var(--green)"></span>
+      <span class="legend-name">Auto-Resolve</span>
+      <span class="legend-val" style="color:var(--green)">${auto}</span>
+    </div>
+    <div class="legend-row">
+      <span class="legend-dot" style="background:var(--amber)"></span>
+      <span class="legend-name">Human Approval</span>
+      <span class="legend-val" style="color:var(--amber)">${human}</span>
+    </div>
+    <div class="legend-row">
+      <span class="legend-dot" style="background:var(--red)"></span>
+      <span class="legend-name">Manual Review</span>
+      <span class="legend-val" style="color:var(--red)">${man}</span>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// QUEUE
+// ═══════════════════════════════════════════════════════════════
+function setTab(el, tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  state.activeTab = tab;
+  renderQueue();
+}
+
+function filterTransactions() {
+  let rows = state.transactions.filter(t => t.is_exception);
+
+  // Tab
+  if (state.activeTab === 'auto')   rows = rows.filter(t => t.confidence >= 90);
+  if (state.activeTab === 'human')  rows = rows.filter(t => t.confidence >= 70 && t.confidence < 90);
+  if (state.activeTab === 'manual') rows = rows.filter(t => t.confidence < 70);
+
+  // Tier filter
+  if (state.tierFilter !== 'all')   rows = rows.filter(t => t.tier === state.tierFilter);
+
+  // Rule filter
+  if (state.ruleFilter !== 'all')   rows = rows.filter(t => (t.triggered_rules || '').includes(state.ruleFilter));
+
+  // Open only
+  if (state.onlyOpen)               rows = rows.filter(t => t.resolution_status === 'Open');
+
+  // Search
+  if (state.searchQuery) {
+    const q = state.searchQuery;
+    rows = rows.filter(t =>
+      t.transaction_id.toLowerCase().includes(q) ||
+      t.vendor.toLowerCase().includes(q) ||
+      t.invoice_number.toLowerCase().includes(q) ||
+      (t.po_number || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Sort: lowest confidence first
+  rows.sort((a, b) => a.confidence - b.confidence);
+  return rows;
+}
+
+function renderQueue() {
+  const rows = filterTransactions();
+  document.getElementById('queuePanelTitle').textContent = `Flagged Queue (${rows.length})`;
+
+  const container = document.getElementById('txList');
+  if (rows.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="es-icon">🎉</div>
+        <p>No transactions match the current filters.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = rows.map(t => txCardHtml(t)).join('');
+
+  // Wire events
+  rows.forEach(t => {
+    const id = t.transaction_id;
+    const summary = document.getElementById('summary-' + id);
+    if (summary) {
+      summary.addEventListener('click', () => {
+        const card = document.getElementById('card-' + id);
+        const wasExpanded = card.classList.contains('expanded');
+        // Collapse all
+        document.querySelectorAll('.tx-card.expanded').forEach(c => c.classList.remove('expanded'));
+        if (!wasExpanded) card.classList.add('expanded');
+      });
+    }
+
+    bindBtn('btn-explain-'  + id, () => doExplain(id));
+    bindBtn('btn-auto-'     + id, () => doResolve(id, 'auto'));
+    bindBtn('btn-approve-'  + id, () => doResolve(id, 'approve'));
+    bindBtn('btn-reject-'   + id, () => doResolve(id, 'reject'));
+    bindBtn('btn-manual-'   + id, () => doResolve(id, 'manual'));
+  });
+}
+
+function bindBtn(id, fn) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', e => { e.stopPropagation(); fn(); });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CARD HTML
+// ═══════════════════════════════════════════════════════════════
+function txCardHtml(t) {
+  const tierCls   = t.tier === 'Auto-Resolve' ? 'tb-auto' : t.tier === 'Human Approval' ? 'tb-human' : 'tb-manual';
+  const confColor = t.confidence >= 90 ? 'var(--green)' : t.confidence >= 70 ? 'var(--amber)' : 'var(--red)';
+  const statusCls = statusChipCls(t.resolution_status);
+  const rules     = (t.triggered_rules || '').split(',').map(r => r.trim()).filter(Boolean);
+
+  const amtMismatch = Math.abs(t.invoice_amount - t.po_amount) > 0.01;
+  const taxMismatch = Math.abs(t.tax_amount - t.expected_tax_amount) > 0.01;
+
+  return `
+  <div class="tx-card" id="card-${t.transaction_id}">
+    <div class="tx-summary" id="summary-${t.transaction_id}">
+      <span class="tx-id">${t.transaction_id}</span>
+      <span class="tx-name">
+        ${t.vendor}
+        <small>${t.invoice_number}${t.po_number ? ' · ' + t.po_number : ' · <em style="color:var(--red)">No PO</em>'}</small>
+      </span>
+      <span class="tx-amt">${fmt(t.invoice_amount)}</span>
+      <span class="tier-badge ${tierCls}">${t.tier}</span>
+      <div class="conf-wrap">
+        <div class="conf-bar-track">
+          <div class="conf-bar-fill" style="width:${t.confidence}%;background:${confColor}"></div>
+        </div>
+        <span class="conf-pct" style="color:${confColor}">${t.confidence}%</span>
+      </div>
+      <span class="status-chip ${statusCls}">${t.resolution_status}</span>
+    </div>
+
+    <div class="tx-body">
+      <!-- LEFT: rule info + details -->
+      <div class="tx-col">
+        <div class="tx-col-label"><span>🔍</span> Rule-Detected Issues</div>
+        <div class="rule-tags">
+          ${rules.map(r => `<span class="rule-tag">${r.replace(/_/g,' ')}</span>`).join('') || '<span style="font-size:12px;color:var(--text-3)">None</span>'}
+        </div>
+        <div class="reason-text">${t.reasons || 'No issues detected.'}</div>
+
+        <div class="tx-col-label" style="margin-top:4px"><span>📋</span> Transaction Details</div>
+        <div class="detail-rows">
+          <div class="detail-row"><span class="detail-key">Invoice #</span><span class="detail-val">${t.invoice_number}</span></div>
+          <div class="detail-row"><span class="detail-key">PO #</span><span class="detail-val">${t.po_number || '—'}</span></div>
+          <div class="detail-row"><span class="detail-key">Invoice Date</span><span class="detail-val">${t.invoice_date}</span></div>
+          <div class="detail-row">
+            <span class="detail-key">Invoice Amount</span>
+            <span class="detail-val ${amtMismatch ? 'mismatch' : ''}">${fmt(t.invoice_amount)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-key">PO Amount</span>
+            <span class="detail-val">${fmt(t.po_amount)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-key">Tax Recorded</span>
+            <span class="detail-val ${taxMismatch ? 'mismatch' : ''}">${fmt(t.tax_amount)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-key">Tax Expected</span>
+            <span class="detail-val">${fmt(t.expected_tax_amount)}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: AI + actions -->
+      <div class="tx-col">
+        <div class="tx-col-label"><span>🤖</span> AI Explanation &amp; Suggested Resolution</div>
+        ${aiBoxHtml(t)}
+
+        <div class="tx-col-label"><span>⚡</span> Actions</div>
+        <div class="action-row">
+          ${actionsHtml(t)}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function aiBoxHtml(t) {
+  if (t.ai_explanation) {
+    return `
+      <div class="ai-card">
+        <div class="ai-source">
+          <span class="ai-dot"></span>
+          source: ${t.ai_source}
+        </div>
+        <div class="ai-text">${t.ai_explanation}</div>
+        <div class="ai-resolution"><strong>Suggested resolution:</strong> ${t.ai_suggested_resolution}</div>
+      </div>`;
+  }
+  return `
+    <div class="ai-placeholder">
+      <p>AI explanation not yet generated for this transaction.</p>
+      <button class="btn btn-primary btn-sm" id="btn-explain-${t.transaction_id}">
+        🤖 Generate Explanation
+      </button>
+    </div>`;
+}
+
+function actionsHtml(t) {
+  if (t.resolution_status !== 'Open') {
+    return `<div style="font-size:12px;color:var(--green);font-weight:600;padding:6px 0;">✓ ${t.resolution_status}</div>`;
+  }
+  if (t.tier === 'Auto-Resolve') {
+    return `<button class="btn btn-green" id="btn-auto-${t.transaction_id}">⚡ Auto-Resolve</button>`;
+  }
+  if (t.tier === 'Human Approval') {
+    return `
+      <button class="btn btn-amber" id="btn-approve-${t.transaction_id}">✓ Approve</button>
+      <button class="btn btn-ghost" id="btn-reject-${t.transaction_id}">✗ Reject → Manual Review</button>`;
+  }
+  // Manual Review
+  return `<button class="btn btn-ghost" id="btn-manual-${t.transaction_id}">📝 Mark as Manually Resolved</button>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ALL-TRANSACTIONS TABLE
+// ═══════════════════════════════════════════════════════════════
+function renderAllTable() {
+  document.getElementById('allTableMeta').textContent = state.transactions.length + ' transactions';
+  document.getElementById('allTableBody').innerHTML = state.transactions.map(t => {
+    const statusCls = statusChipCls(t.resolution_status);
+    const tierCls   = t.is_exception ? (t.tier === 'Auto-Resolve' ? 'tb-auto' : t.tier === 'Human Approval' ? 'tb-human' : 'tb-manual') : '';
+    const confColor = t.confidence >= 90 ? 'var(--green)' : t.confidence >= 70 ? 'var(--amber)' : 'var(--red)';
+    return `
+      <tr>
+        <td class="mono">${t.transaction_id}</td>
+        <td>${t.vendor}</td>
+        <td class="mono">${t.invoice_number}</td>
+        <td class="mono">${fmt(t.invoice_amount)}</td>
+        <td class="mono dim">${fmt(t.po_amount)}</td>
+        <td class="mono dim">${fmt(t.tax_amount)}</td>
+        <td>${t.is_exception ? '<span style="color:var(--red);font-weight:600;">Yes</span>' : '<span style="color:var(--text-3)">No</span>'}</td>
+        <td class="dim" style="font-size:11px;font-family:var(--mono)">${t.triggered_rules || '—'}</td>
+        <td class="mono" style="color:${confColor}">${t.confidence}%</td>
+        <td>${t.is_exception ? `<span class="tier-badge ${tierCls}">${t.tier}</span>` : '—'}</td>
+        <td><span class="status-chip ${statusCls}">${t.resolution_status}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// API ACTIONS
+// ═══════════════════════════════════════════════════════════════
+async function doExplain(id) {
+  const btn = document.getElementById('btn-explain-' + id);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Generating…'; }
+
+  try {
+    const res = await fetch('/api/explain?id=' + encodeURIComponent(id), { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Unknown error');
+    applyUpdate(data);
+    toast('AI explanation generated for ' + id, 'success');
+  } catch (e) {
+    toast('Could not generate explanation: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '🤖 Generate Explanation'; }
+  }
+}
+
+async function doResolve(id, action) {
+  const actionLabels = { auto: 'Auto-Resolve', approve: 'Approve', reject: 'Reject', manual: 'Mark Resolved' };
+  const btnId = `btn-${action}-${id}`;
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> ' + actionLabels[action] + '…'; }
+
+  try {
+    const res = await fetch(`/api/resolve?id=${encodeURIComponent(id)}&action=${action}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Unknown error');
+    applyUpdate(data);
+    toast(`${id}: ${data.resolution_status}`, 'success');
+  } catch (e) {
+    toast('Action failed: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = actionLabels[action]; }
+  }
+}
+
+function applyUpdate(updated) {
+  const idx = state.transactions.findIndex(t => t.transaction_id === updated.transaction_id);
+  if (idx >= 0) state.transactions[idx] = updated;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SIDEBAR NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function showSection(which) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('sectionQueue').style.display = which === 'queue' ? '' : 'none';
+  document.getElementById('sectionAll').style.display   = which === 'all'   ? '' : 'none';
+}
+
+function updateSidebarBadge() {
+  const open = state.transactions.filter(t => t.is_exception && t.resolution_status === 'Open').length;
+  document.getElementById('sidebarBadge').textContent = open;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function fmt(v) {
+  return '$' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function statusChipCls(s) {
+  if (s === 'Open')               return 'sc-open';
+  if (s === 'Auto-Resolved')      return 'sc-resolved';
+  if (s === 'Resolved (Approved)')return 'sc-approved';
+  if (s === 'Resolved (Manual)')  return 'sc-approved';
+  if (s === 'Manual Review')      return 'sc-manual';
+  return 'sc-open';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════
+function toast(msg, type = 'info') {
+  const icons = { success: '✅', error: '❌', warn: '⚠️', info: 'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `
+    <span class="toast-icon">${icons[type] || icons.info}</span>
+    <span class="toast-msg">${msg}</span>
+    <span class="toast-close" onclick="this.parentElement.remove()">✕</span>`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'fadeOut .3s ease forwards';
+    setTimeout(() => el.remove(), 350);
+  }, 3200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PAGE LOADER
+// ═══════════════════════════════════════════════════════════════
+function startLoader() {
+  const el = document.getElementById('pageLoader');
+  el.className = 'page-loader loading';
+}
+function doneLoader() {
+  const el = document.getElementById('pageLoader');
+  el.className = 'page-loader done';
+  setTimeout(() => { el.className = 'page-loader hidden'; }, 600);
+}
+</script>
+</body>
+</html>
