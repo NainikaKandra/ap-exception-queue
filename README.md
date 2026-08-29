@@ -1,5 +1,10 @@
 # Problem 9 — Transaction Exception Queue (Java Prototype)
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-railway.app-6B47F5?style=for-the-badge&logo=railway&logoColor=white)](https://ap-exception-queue.up.railway.app)
+[![GitHub](https://img.shields.io/badge/GitHub-NainikaKandra%2Fap--exception--queue-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/NainikaKandra/ap-exception-queue)
+
+> 🔗 **Live app:** [https://ap-exception-queue.up.railway.app](https://ap-exception-queue.up.railway.app)
+
 Synthetic transactions are checked against deterministic rules, flagged
 exceptions get an AI-generated explanation and suggested resolution, and
 a confidence score decides whether a transaction can be auto-resolved,
