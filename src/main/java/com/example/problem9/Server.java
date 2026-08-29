@@ -149,7 +149,10 @@ public class Server {
 
     private static void send(HttpExchange ex, int status, String contentType, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        // CORS headers so the dashboard works from any public origin
         ex.getResponseHeaders().add("Content-Type", contentType + "; charset=utf-8");
+        ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         ex.sendResponseHeaders(status, bytes.length);
         try (OutputStream os = ex.getResponseBody()) {
             os.write(bytes);
@@ -164,7 +167,12 @@ public class Server {
         Path csv = Paths.get("data", "transactions.csv");
         Path indexHtml = Paths.get("resources", "index.html");
         TransactionStore store = new TransactionStore(csv);
-        int port = args.length > 0 ? Integer.parseInt(args[0]) : 8080;
+        // Railway (and most PaaS) injects PORT via environment variable.
+        // Fall back to CLI arg, then to 8080 for local dev.
+        String envPort = System.getenv("PORT");
+        int port = envPort != null && !envPort.isBlank()
+                ? Integer.parseInt(envPort)
+                : (args.length > 0 ? Integer.parseInt(args[0]) : 8080);
         new Server(store, indexHtml).start(port);
     }
 }
